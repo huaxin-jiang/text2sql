@@ -1,0 +1,145 @@
+﻿id,question,version,sql,status,rows,fixes,elapsed_s,correct
+1,2017 年每个月的订单量是多少,v2,"SELECT 
+  purchase_month,
+  COUNT(DISTINCT order_id) AS order_count
+FROM 
+  dwd_orders
+WHERE 
+  purchase_year = 2017
+GROUP BY 
+  purchase_month
+LIMIT 200",ok,12,0,4.0,1
+2,2017 年每个月的销售额是多少,v2,"SELECT 
+  purchase_month AS '月份',
+  SUM(dwd_order_items.price * dwd_order_items.item_total) AS '销售额'
+FROM 
+  dwd_orders
+JOIN 
+  dwd_order_items ON dwd_orders.order_id = dwd_order_items.order_id
+WHERE 
+  dwd_orders.purchase_year = 2017
+GROUP BY 
+  purchase_month
+LIMIT 200",ok,12,0,6.5,0
+3,2017 年每个月的延迟率是多少,v2,"SELECT 
+  purchase_month AS '月份',
+  ROUND(SUM(CASE WHEN is_late = 1 THEN 1 ELSE 0 END) * 100 / COUNT(DISTINCT order_id), 2) AS '延迟率'
+FROM 
+  dwd_orders
+WHERE 
+  purchase_year = 2017 AND is_delivered = 1
+GROUP BY 
+  purchase_month
+LIMIT 200",ok,12,0,6.9,1
+4,整体客单价是多少,v2,"SELECT ROUND(SUM(dwd_order_items.item_total) / COUNT(DISTINCT dwd_orders.order_id), 2) AS average_order_value
+FROM dwd_orders
+JOIN dwd_order_items ON dwd_orders.order_id = dwd_order_items.order_id
+WHERE dwd_orders.is_delivered = 1
+LIMIT 200",ok,1,0,3.6,1
+5,销售额最高的 10 个商品类目,v2,"SELECT 
+  dim_product.category_en AS 商品品类,
+  SUM(dwd_order_items.price) AS 销售额
+FROM 
+  dwd_orders
+JOIN 
+  dwd_order_items ON dwd_orders.order_id = dwd_order_items.order_id
+JOIN 
+  dim_product ON dwd_order_items.product_id = dim_product.product_id
+WHERE 
+  dwd_orders.is_delivered = 1
+GROUP BY 
+  dim_product.category_en
+ORDER BY 
+  销售额 DESC
+LIMIT 10",ok,10,0,7.3,1
+6,下单两次及以上的客户有多少人,v2,,"error: OperationalError: (1054, ""Unknown column 'order_count' in 'where clause'"")",0,0,3.0,0
+7,各订单状态的订单数分布,v2,"SELECT 
+  order_status,
+  COUNT(DISTINCT order_id) AS order_count
+FROM 
+  dwd_orders
+GROUP BY 
+  order_status
+LIMIT 200",ok,8,0,2.7,1
+8,各支付方式的订单数与金额占比,v2,"SELECT 
+  main_payment_type,
+  COUNT(DISTINCT order_id) AS order_count,
+  SUM(payment_total) AS total_amount,
+  ROUND((SUM(payment_total) * 100) / (SELECT SUM(payment_total) FROM dwd_payments), 2) AS amount_percentage
+FROM 
+  dwd_payments
+GROUP BY 
+  main_payment_type
+LIMIT 200",ok,5,0,5.4,1
+9,平均配送天数是多少,v2,"SELECT AVG(delivery_days) AS 平均配送天数
+FROM dwd_orders
+WHERE is_delivered = 1
+LIMIT 200",ok,1,0,3.2,1
+10,延迟订单的平均延迟天数是多少,v2,"SELECT ROUND(AVG(late_days), 2) AS 平均延迟天数
+FROM dwd_orders
+WHERE is_late = 1
+LIMIT 200",ok,1,0,3.2,1
+11,客户数量最多的 5 个州,v2,"SELECT state, COUNT(DISTINCT customer_unique_id) AS customer_count
+FROM dim_customer
+GROUP BY state
+ORDER BY customer_count DESC
+LIMIT 5",ok,5,0,8.2,1
+12,2018 年 1 月的准时率是多少,v2,"SELECT 
+  ROUND(SUM(CASE WHEN dwd_orders.is_late = 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT dwd_orders.order_id), 2) AS on_time_rate
+FROM 
+  dwd_orders
+WHERE 
+  dwd_orders.purchase_month = 1 AND 
+  dwd_orders.purchase_year = 2018 AND 
+  dwd_orders.is_delivered = 1
+LIMIT 200",ok,1,0,22.2,1
+13,评论评分 1 到 5 分各自的订单数,v2,"SELECT 
+  review_score,
+  COUNT(DISTINCT order_id) AS order_count
+FROM 
+  dwd_reviews
+GROUP BY 
+  review_score
+LIMIT 200",ok,5,0,2.8,1
+14,平均评论评分是多少,v2,"SELECT AVG(review_score) AS 平均评论评分
+FROM dwd_reviews
+LIMIT 200",ok,1,0,1.6,1
+15,销售额前 10 的卖家,v2,,error: ColumnError: p.item_total 写错了表：dwd_payments 没有该列，它属于 dwd_order_items；p.order_status 写错了表：dwd_payments 没有该列，它属于 dwd_orders,0,0,7.0,0
+16,商品价格的中位数和平均值,v2,,"error: ProgrammingError: (1064, ""You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the rig",0,0,3.2,0
+17,运费占商品金额的比例是多少,v2,"SELECT 
+  ROUND(SUM(doi.freight_value) * 100 / SUM(doi.price), 2) AS freight_percentage
+FROM 
+  dwd_order_items doi
+WHERE 
+  doi.price > 0
+LIMIT 200",ok,1,0,2.1,1
+18,延迟率最高的 5 个商品类目,v2,"SELECT 
+  dim_product.category_en AS 商品品类,
+  ROUND(SUM(CASE WHEN dwd_orders.is_late = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(DISTINCT dwd_orders.order_id), 2) AS 延迟率
+FROM 
+  dwd_orders
+JOIN 
+  dwd_order_items ON dwd_orders.order_id = dwd_order_items.order_id
+JOIN 
+  dim_product ON dwd_order_items.product_id = dim_product.product_id
+GROUP BY 
+  dim_product.category_en
+ORDER BY 
+  延迟率 DESC
+LIMIT 5",ok,5,0,10.7,0
+19,每月下单客户数（去重）,v2,"SELECT COUNT(DISTINCT customer_unique_id) AS unique_customer_count
+FROM dwd_orders
+WHERE purchase_month = EXTRACT(MONTH FROM purchase_ts)
+LIMIT 200",ok,1,0,4.0,0
+20,2017 年各月订单量的环比增长率,v2,"SELECT 
+  purchase_month,
+  ROUND(((COUNT(DISTINCT dwd_orders.order_id) - LAG(COUNT(DISTINCT dwd_orders.order_id), 1) OVER (ORDER BY purchase_month)) / LAG(COUNT(DISTINCT dwd_orders.order_id), 1) OVER (ORDER BY purchase_month)) * 100, 2) AS growth_rate
+FROM 
+  dwd_orders
+WHERE 
+  purchase_year = 2017
+GROUP BY 
+  purchase_month
+ORDER BY 
+  purchase_month
+LIMIT 200",ok,12,0,5.2,1

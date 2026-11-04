@@ -1,0 +1,96 @@
+﻿id,question,version,sql,status,rows,elapsed_s,correct
+1,2017 年每个月的订单量是多少,v3,"SELECT purchase_year, purchase_month,
+       COUNT(*) AS order_count
+FROM dwd_orders
+WHERE purchase_year = 2017
+GROUP BY purchase_year, purchase_month
+ORDER BY purchase_month
+LIMIT 200",ok,12,4.1,1
+2,2017 年每个月的销售额是多少,v3,"SELECT purchase_year, purchase_month,
+       ROUND(SUM(oi.item_total), 2) AS sales_amount
+FROM dwd_orders o
+JOIN dwd_order_items oi ON o.order_id = oi.order_id
+WHERE purchase_year = 2017 AND o.order_status = 'delivered'
+GROUP BY purchase_year, purchase_month
+ORDER BY purchase_month
+LIMIT 200",ok,12,4.1,0
+3,2017 年每个月的延迟率是多少,v3,"SELECT purchase_year, purchase_month,
+       ROUND(SUM(is_late = 1) * 100.0 / COUNT(*), 2) AS late_rate_pct
+FROM dwd_orders
+WHERE purchase_year = 2017 AND is_delivered = 1
+GROUP BY purchase_year, purchase_month
+ORDER BY purchase_month
+LIMIT 200",ok,12,4.3,1
+4,整体客单价是多少,v3,"SELECT ROUND(SUM(oi.item_total) * 100.0 / COUNT(DISTINCT o.order_id), 2) AS average_order_value
+FROM dwd_orders o
+JOIN dwd_order_items oi ON o.order_id = oi.order_id
+WHERE o.order_status = 'delivered'
+LIMIT 200",ok,1,4.7,0
+5,销售额最高的 10 个商品类目,v3,,"error: OperationalError: (1054, ""Unknown column 'p.product_category_name' in 'field list'"")",0,4.3,0
+6,下单两次及以上的客户有多少人,v3,"SELECT COUNT(*) AS repeat_customers
+FROM (
+    SELECT customer_unique_id
+    FROM dwd_orders
+    GROUP BY customer_unique_id
+    HAVING COUNT(DISTINCT order_id) >= 2
+) t
+LIMIT 200",ok,1,3.8,1
+7,各订单状态的订单数分布,v3,"SELECT order_status, COUNT(order_id) AS order_count
+FROM dwd_orders
+GROUP BY order_status
+ORDER BY order_count DESC
+LIMIT 200",ok,8,3.0,1
+8,各支付方式的订单数与金额占比,v3,,"error: OperationalError: (1055, ""Expression #3 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'olist_db.dwd_payments.",0,3.1,0
+9,平均配送天数是多少,v3,"SELECT ROUND(AVG(delivery_days), 2) AS average_delivery_days
+FROM dwd_orders
+WHERE is_delivered = 1
+LIMIT 200",ok,1,2.6,1
+10,延迟订单的平均延迟天数是多少,v3,"SELECT ROUND(AVG(late_days), 2) AS avg_late_days
+FROM dwd_orders
+WHERE is_late = 1 AND is_delivered = 1
+LIMIT 200",ok,1,2.7,1
+11,客户数量最多的 5 个州,v3,"SELECT state, COUNT(DISTINCT customer_unique_id) AS customer_count
+FROM dim_customer
+GROUP BY state
+ORDER BY customer_count DESC
+LIMIT 5",ok,5,4.3,1
+12,2018 年 1 月的准时率是多少,v3,"SELECT purchase_year, purchase_month,
+       ROUND(SUM(is_late = 0) * 100.0 / COUNT(*), 2) AS on_time_rate_pct
+FROM dwd_orders
+WHERE purchase_year = 2018 AND purchase_month = 1 AND is_delivered = 1
+GROUP BY purchase_year, purchase_month
+ORDER BY purchase_month
+LIMIT 200",ok,1,2.9,1
+13,评论评分 1 到 5 分各自的订单数,v3,"SELECT review_score, COUNT(*) AS order_count
+FROM dwd_reviews
+GROUP BY review_score
+LIMIT 200",ok,5,2.2,1
+14,平均评论评分是多少,v3,"SELECT ROUND(AVG(review_score), 2) AS average_review_score
+FROM dwd_reviews
+WHERE review_score IS NOT NULL
+LIMIT 200",ok,1,1.8,1
+15,销售额前 10 的卖家,v3,,"error: OperationalError: (1054, ""Unknown column 'o.seller_id' in 'on clause'"")",0,3.8,0
+16,商品价格的中位数和平均值,v3,,"error: ProgrammingError: (1064, ""You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the rig",0,4.6,0
+17,运费占商品金额的比例是多少,v3,"SELECT 
+    ROUND(SUM(oi.freight_value) * 100.0 / SUM(oi.price), 2) AS freight_to_item_price_ratio
+FROM 
+    dwd_order_items oi
+WHERE 
+    oi.price > 0
+LIMIT 200",ok,1,3.8,1
+18,延迟率最高的 5 个商品类目,v3,,"error: OperationalError: (1054, ""Unknown column 'p.product_category_name' in 'field list'"")",0,3.6,0
+19,每月下单客户数（去重）,v3,"SELECT purchase_year, purchase_month,
+       COUNT(DISTINCT customer_unique_id) AS unique_customers_count
+FROM dwd_orders
+GROUP BY purchase_year, purchase_month
+ORDER BY purchase_month
+LIMIT 200",ok,25,2.3,0
+20,2017 年各月订单量的环比增长率,v3,"SELECT 
+  purchase_month,
+  COUNT(order_id) AS current_month_orders,
+  ROUND((COUNT(order_id) - LAG(COUNT(order_id)) OVER (ORDER BY purchase_month) + 1) / LAG(COUNT(order_id)) OVER (ORDER BY purchase_month) * 100, 2) AS growth_rate_pct
+FROM dwd_orders
+WHERE purchase_year = 2017
+GROUP BY purchase_month
+ORDER BY purchase_month
+LIMIT 200",ok,12,3.1,0

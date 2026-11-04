@@ -1,0 +1,157 @@
+﻿id,question,version,sql,status,rows,fixes,elapsed_s,correct
+1,2017 年每个月的订单量是多少,v5,"SELECT 
+    purchase_year AS year,
+    purchase_month AS month,
+    COUNT(DISTINCT order_id) AS order_count
+FROM 
+    dwd_orders
+WHERE 
+    purchase_year = 2017
+GROUP BY 
+    purchase_year, 
+    purchase_month
+ORDER BY 
+    purchase_month
+LIMIT 200",ok,12,0,3.7,1
+2,2017 年每个月的销售额是多少,v5,"SELECT 
+    o.purchase_year AS year,
+    o.purchase_month AS month,
+    SUM(p.payment_total) AS monthly_sales
+FROM 
+    dwd_orders o
+JOIN 
+    dwd_payments p ON o.order_id = p.order_id
+WHERE 
+    o.purchase_year = 2017
+GROUP BY 
+    o.purchase_year, 
+    o.purchase_month
+ORDER BY 
+    o.purchase_month
+LIMIT 200",ok,12,1,6.8,1
+3,2017 年每个月的延迟率是多少,v5,"WITH delayed_orders AS (
+    SELECT o.purchase_year, o.purchase_month, COUNT(DISTINCT o.order_id) AS total_orders,
+           SUM(CASE WHEN o.is_late = 1 THEN 1 ELSE 0 END) AS delayed_orders
+    FROM dwd_orders o
+    WHERE o.purchase_year = 2017 AND o.is_delivered = 1
+    GROUP BY o.purchase_year, o.purchase_month
+)
+SELECT purchase_month, ROUND((delayed_orders * 100.0) / total_orders, 2) AS delay_rate_pct
+FROM delayed_orders
+ORDER BY purchase_month
+LIMIT 200",ok,12,0,9.7,1
+4,整体客单价是多少,v5,"SELECT ROUND(SUM(doi.item_total) / COUNT(DISTINCT do.order_id), 2) AS average_order_value
+FROM dwd_orders do
+JOIN dwd_order_items doi ON do.order_id = doi.order_id
+WHERE do.is_delivered = 1
+LIMIT 200",ok,1,0,7.7,1
+5,销售额最高的 10 个商品类目,v5,"SELECT category_en, ROUND(SUM(oi.price + oi.freight_value), 2) AS total_sales
+FROM dwd_order_items oi
+JOIN dim_product dp ON dp.product_id = oi.product_id
+GROUP BY category_en
+ORDER BY total_sales DESC
+LIMIT 10",ok,10,0,3.3,1
+6,下单两次及以上的客户有多少人,v5,"SELECT COUNT(DISTINCT customer_unique_id) AS repeat_customers
+FROM dwd_orders
+WHERE customer_unique_id IN (
+    SELECT customer_unique_id
+    FROM dwd_orders
+    GROUP BY customer_unique_id
+    HAVING COUNT(order_id) >= 2
+)
+LIMIT 200",ok,1,1,8.5,1
+7,各订单状态的订单数分布,v5,"SELECT order_status,
+       COUNT(DISTINCT order_id) AS order_count
+FROM dwd_orders
+GROUP BY order_status
+ORDER BY order_count DESC
+LIMIT 200",ok,8,0,2.6,1
+8,各支付方式的订单数与金额占比,v5,"SELECT 
+    p.main_payment_type,
+    COUNT(DISTINCT o.order_id) AS order_count,
+    SUM(p.payment_total) AS total_payment_amount,
+    ROUND((SUM(p.payment_total) * 100.0) / (SELECT SUM(payment_total) FROM dwd_payments), 2) AS payment_amount_percentage
+FROM 
+    dwd_orders o
+JOIN 
+    dwd_payments p ON o.order_id = p.order_id
+GROUP BY 
+    p.main_payment_type
+ORDER BY 
+    payment_amount_percentage DESC
+LIMIT 200",ok,5,0,6.6,1
+9,平均配送天数是多少,v5,"SELECT ROUND(AVG(delivery_days), 2) AS avg_delivery_days
+FROM dwd_orders
+WHERE is_delivered = 1
+LIMIT 200",ok,1,0,2.9,1
+10,延迟订单的平均延迟天数是多少,v5,"SELECT ROUND(AVG(late_days), 2) AS avg_late_days
+FROM dwd_orders
+WHERE is_late = 1 AND is_delivered = 1
+LIMIT 200",ok,1,0,3.2,1
+11,客户数量最多的 5 个州,v5,"SELECT state, COUNT(DISTINCT customer_unique_id) AS customer_count
+FROM dim_customer
+GROUP BY state
+ORDER BY customer_count DESC
+LIMIT 5",ok,5,0,3.7,1
+12,2018 年 1 月的准时率是多少,v5,"SELECT ROUND(SUM(CASE WHEN o.is_late = 1 THEN 0 ELSE 1 END) * 100.0 / COUNT(DISTINCT o.order_id), 2) AS on_time_rate_pct
+FROM dwd_orders o
+WHERE o.purchase_year = 2018 AND o.purchase_month = 1 AND o.is_delivered = 1
+LIMIT 200",ok,1,0,5.4,1
+13,评论评分 1 到 5 分各自的订单数,v5,"SELECT review_score, COUNT(DISTINCT order_id) AS order_count
+FROM dwd_reviews
+GROUP BY review_score
+ORDER BY review_score
+LIMIT 200",ok,5,0,2.3,1
+14,平均评论评分是多少,v5,"SELECT ROUND(AVG(r.review_score), 2) AS avg_review_score
+FROM dwd_reviews r
+JOIN dwd_orders o ON r.order_id = o.order_id
+WHERE o.is_delivered = 1
+LIMIT 200",ok,1,0,3.0,1
+15,销售额前 10 的卖家,v5,"SELECT ds.seller_id, SUM(oi.price + oi.freight_value) AS total_sales
+FROM dwd_order_items oi
+JOIN dim_seller ds ON ds.seller_id = oi.seller_id
+GROUP BY ds.seller_id
+ORDER BY total_sales DESC
+LIMIT 10",ok,10,1,9.6,1
+16,商品价格的中位数和平均值,v5,,"error: OperationalError: (1140, ""In aggregated query without GROUP BY, expression #2 of SELECT list contains nonaggregated column 'grouped_price_",0,0,17.9,0
+17,运费占商品金额的比例是多少,v5,"SELECT 
+    ROUND((SUM(oi.freight_value) / SUM(oi.price)) * 100, 2) AS freight_to_price_ratio
+FROM 
+    dwd_order_items oi
+JOIN 
+    dwd_orders o ON o.order_id = oi.order_id
+WHERE 
+    o.is_delivered = 1
+GROUP BY 
+    o.purchase_year, o.purchase_month
+LIMIT 200",ok,23,0,5.6,0
+18,延迟率最高的 5 个商品类目,v5,,error: RatioError: 分子用 SUM(CASE WHEN ... THEN 1) 按商品明细行计数，分母用 COUNT(DISTINCT order_id) 按订单去重计数，两者粒度不一致：同一订单有 N 件商品时，分子会被放大 N 倍，比率虚高且排名失真。,0,0,21.3,0
+19,每月下单客户数（去重）,v5,"SELECT purchase_year, purchase_month, COUNT(DISTINCT customer_unique_id) AS unique_customers_per_month
+FROM dwd_orders
+GROUP BY purchase_year, purchase_month
+ORDER BY purchase_year, purchase_month
+LIMIT 200",ok,25,0,2.7,1
+20,2017 年各月订单量的环比增长率,v5,"WITH monthly_orders AS (
+    SELECT 
+        purchase_year,
+        purchase_month,
+        COUNT(DISTINCT order_id) AS order_count
+    FROM dwd_orders
+    WHERE purchase_year = 2017
+    GROUP BY purchase_year, purchase_month
+),
+monthly_orders_ranked AS (
+    SELECT 
+        purchase_year,
+        purchase_month,
+        order_count,
+        LAG(order_count, 1) OVER (ORDER BY purchase_month) AS prev_month_order_count
+    FROM monthly_orders
+)
+SELECT 
+    purchase_month,
+    ROUND((order_count - prev_month_order_count) / prev_month_order_count * 100, 2) AS growth_rate_pct
+FROM monthly_orders_ranked
+WHERE purchase_month > 1
+ORDER BY purchase_month
+LIMIT 200",ok,11,0,7.3,1

@@ -1,0 +1,21 @@
+﻿id,question,业务口径提示（人工评对错时参考）
+1,2017 年每个月的订单量是多少,按 purchase_year/month 聚合，全状态计数
+2,2017 年每个月的销售额是多少,sum(payments.payment_value)，仅 delivered
+3,2017 年每个月的延迟率是多少,is_delivered=1 为分母，sum(is_late=1) 为分子
+4,整体客单价是多少,销售额 / 订单数，仅 delivered
+5,销售额最高的 10 个商品类目,order_items.price 求和，关联 dim_product
+6,下单两次及以上的客户有多少人,按 customer_unique_id 聚合 having count(distinct order_id)>=2
+7,各订单状态的订单数分布,group by order_status
+8,各支付方式的订单数与金额占比,关联 dwd_payments，按 payment_type 分组
+9,平均配送天数是多少,avg(delivery_days)，仅已签收
+10,延迟订单的平均延迟天数是多少,必须加 is_late=1，否则负值混入
+11,客户数量最多的 5 个州,关联 dim_customer，用 customer_unique_id 去重
+12,2018 年 1 月的准时率是多少,1 - 延迟率，仅已签收
+13,评论评分 1 到 5 分各自的订单数,关联 dwd_reviews
+14,平均评论评分是多少,avg(review_score)
+15,销售额前 10 的卖家,order_items 关联 dim_seller，price 求和
+16,商品价格的中位数和平均值,percentile / avg(price)
+17,运费占商品金额的比例是多少,sum(freight_value)/sum(price)
+18,延迟率最高的 5 个商品类目,类目维度聚合延迟率并排序
+19,每月下单客户数（去重）,count(distinct customer_unique_id) by month
+20,2017 年各月订单量的环比增长率,(本月-上月)/上月

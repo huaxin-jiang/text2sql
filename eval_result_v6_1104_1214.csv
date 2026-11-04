@@ -1,0 +1,156 @@
+﻿id,question,version,sql,status,rows,fixes,elapsed_s,correct
+1,2017 年每个月的订单量是多少,v6,"SELECT purchase_month, COUNT(DISTINCT order_id) AS order_count
+FROM dwd_orders
+WHERE purchase_year = 2017
+GROUP BY purchase_month
+ORDER BY purchase_month
+LIMIT 200",ok,12,0,4.4,
+2,2017 年每个月的销售额是多少,v6,"SELECT 
+  purchase_month AS month,
+  SUM(payment_total) AS monthly_sales
+FROM 
+  dwd_orders
+JOIN 
+  dwd_payments ON dwd_orders.order_id = dwd_payments.order_id
+WHERE 
+  purchase_year = 2017
+GROUP BY 
+  purchase_month
+ORDER BY 
+  purchase_month
+LIMIT 200",ok,12,0,4.9,
+3,2017 年每个月的延迟率是多少,v6,,error: ColumnError: oi.is_late 写错了表：dwd_order_items 没有该列，它属于 dwd_orders,0,0,19.5,
+4,整体客单价是多少,v6,"SELECT ROUND(SUM(dwd_payments.payment_total) / COUNT(DISTINCT dwd_orders.order_id), 2) AS average_order_value
+FROM dwd_orders
+JOIN dwd_payments ON dwd_orders.order_id = dwd_payments.order_id
+WHERE dwd_orders.is_delivered = 1
+LIMIT 200",ok,1,0,5.2,
+5,销售额最高的 10 个商品类目,v6,"SELECT p.category_en, SUM(oi.price + oi.freight_value) AS total_sales
+FROM dwd_order_items oi
+JOIN dim_product p ON oi.product_id = p.product_id
+GROUP BY p.category_en
+ORDER BY total_sales DESC
+LIMIT 10",ok,10,0,3.2,
+6,下单两次及以上的客户有多少人,v6,"SELECT COUNT(DISTINCT customer_unique_id) AS repeat_customers
+FROM dwd_orders
+WHERE customer_unique_id IN (
+    SELECT customer_unique_id
+    FROM dwd_orders
+    GROUP BY customer_unique_id
+    HAVING COUNT(order_id) >= 2
+)
+LIMIT 200",ok,1,1,5.4,
+7,各订单状态的订单数分布,v6,"SELECT order_status,
+       COUNT(DISTINCT order_id) AS order_count
+FROM dwd_orders
+GROUP BY order_status
+ORDER BY order_count DESC
+LIMIT 200",ok,8,0,5.0,
+8,各支付方式的订单数与金额占比,v6,"SELECT 
+  p.main_payment_type,
+  COUNT(DISTINCT o.order_id) AS order_count,
+  SUM(p.payment_total) AS total_amount,
+  ROUND((SUM(p.payment_total) * 100.0) / (SELECT SUM(payment_total) FROM dwd_payments), 2) AS amount_percentage
+FROM 
+  dwd_orders o
+JOIN 
+  dwd_payments p ON o.order_id = p.order_id
+GROUP BY 
+  p.main_payment_type
+ORDER BY 
+  total_amount DESC
+LIMIT 200",ok,5,0,5.5,
+9,平均配送天数是多少,v6,"WITH order_level AS (
+    SELECT o.order_id,
+           AVG(o.delivery_days) AS avg_delivery_days
+    FROM dwd_orders o
+    WHERE o.is_delivered = 1
+    GROUP BY o.order_id
+)
+SELECT AVG(avg_delivery_days) AS average_delivery_days
+FROM order_level
+LIMIT 200",ok,1,0,4.6,
+10,延迟订单的平均延迟天数是多少,v6,"WITH delayed_orders AS (
+  SELECT o.order_id,
+         o.late_days
+  FROM dwd_orders o
+  WHERE o.is_delivered = 1 AND o.is_late = 1
+)
+SELECT ROUND(AVG(late_days), 2) AS avg_delay_days
+FROM delayed_orders
+LIMIT 200",ok,1,0,5.1,
+11,客户数量最多的 5 个州,v6,"SELECT state, COUNT(DISTINCT customer_unique_id) AS customer_count
+FROM dim_customer
+GROUP BY state
+ORDER BY customer_count DESC
+LIMIT 5",ok,5,0,2.2,
+12,2018 年 1 月的准时率是多少,v6,"WITH base AS (
+  SELECT o.order_id,
+         CASE WHEN o.is_late = 1 THEN 1 ELSE 0 END AS is_late
+  FROM dwd_orders o
+  WHERE o.purchase_year = 2018 AND o.purchase_month = 1 AND o.is_delivered = 1
+)
+SELECT ROUND(SUM(is_late) * 100.0 / COUNT(*), 2) AS on_time_rate_pct
+FROM base
+LIMIT 200",ok,1,0,7.6,
+13,评论评分 1 到 5 分各自的订单数,v6,"SELECT review_score, COUNT(DISTINCT order_id) AS order_count
+FROM dwd_reviews
+GROUP BY review_score
+ORDER BY review_score
+LIMIT 200",ok,5,0,2.5,
+14,平均评论评分是多少,v6,"SELECT ROUND(AVG(review_score), 2) AS avg_review_score
+FROM dwd_reviews
+LIMIT 200",ok,1,0,1.9,
+15,销售额前 10 的卖家,v6,,error: ColumnError: p.is_delivered 写错了表：dwd_payments 没有该列，它属于 dwd_orders,0,0,13.7,
+16,商品价格的中位数和平均值,v6,"WITH median_window AS (
+  SELECT price,
+         ROW_NUMBER() OVER (ORDER BY price) AS rn,
+         COUNT(*) OVER () AS cnt
+  FROM dwd_order_items
+)
+SELECT AVG(price) AS average_price,
+       AVG(CASE WHEN rn IN (FLOOR((cnt + 1) / 2), CEIL((cnt + 1) / 2)) THEN price END) AS median_price
+FROM median_window
+LIMIT 200",ok,1,0,4.6,
+17,运费占商品金额的比例是多少,v6,"WITH order_item_details AS (
+    SELECT
+        oi.order_id,
+        SUM(oi.price) AS total_product_price,
+        SUM(oi.freight_value) AS total_freight
+    FROM dwd_order_items oi
+    GROUP BY oi.order_id
+)
+SELECT
+    ROUND((oid.total_freight * 100.0) / oid.total_product_price, 2) AS freight_to_product_price_ratio
+FROM order_item_details oid
+WHERE oid.total_product_price > 0
+LIMIT 200",ok,200,0,4.7,
+18,延迟率最高的 5 个商品类目,v6,,error: RatioError: WHERE 里筛了 is_late = 1 之后又做除法：这样分子分母都只剩下延迟订单，算出来不是延迟率。延迟率只筛 is_delivered = 1，is_late 应放在 CASE WHEN 里当分子。,0,0,22.0,
+19,每月下单客户数（去重）,v6,"SELECT purchase_year, purchase_month, COUNT(DISTINCT customer_unique_id) AS unique_customers_per_month
+FROM dwd_orders
+GROUP BY purchase_year, purchase_month
+ORDER BY purchase_year, purchase_month
+LIMIT 200",ok,25,0,4.4,
+20,2017 年各月订单量的环比增长率,v6,"WITH monthly_orders AS (
+  SELECT 
+    purchase_year, 
+    purchase_month, 
+    COUNT(DISTINCT order_id) AS order_count
+  FROM dwd_orders
+  WHERE purchase_year = 2017
+  GROUP BY purchase_year, purchase_month
+),
+monthly_orders_with_lag AS (
+  SELECT 
+    m1.purchase_year, 
+    m1.purchase_month, 
+    m1.order_count, 
+    LAG(m1.order_count, 1) OVER (ORDER BY m1.purchase_month) AS prev_month_order_count
+  FROM monthly_orders m1
+)
+SELECT 
+  m1.purchase_month, 
+  ROUND((m1.order_count - COALESCE(m1.prev_month_order_count, 0)) * 100.0 / COALESCE(m1.prev_month_order_count, 1), 2) AS growth_rate_pct
+FROM monthly_orders_with_lag m1
+ORDER BY m1.purchase_month
+LIMIT 200",ok,12,0,8.3,

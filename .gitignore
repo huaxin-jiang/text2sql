@@ -1,0 +1,13 @@
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Streamlit 本地密钥
+.streamlit/secrets.toml
+
+# 运行日志与临时截图
+_*.log
+_shot*.png

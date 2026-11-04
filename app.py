@@ -1,11 +1,11 @@
-"""Streamlit 界面：把命令行版包一层网页，面试时可当场演示。
+"""Streamlit 界面：把命令行版包一层网页，便于演示。
 
 启动：
     streamlit run app.py
 
 设计原则：界面只做展示，不掺业务逻辑。
 SQL 生成、字段校验、语义检查、自动纠错全部复用 selfcorrect.generate_and_run，
-这样网页和命令行的结果永远一致 —— 面试官让你换个方式跑，不会出现两套答案。
+这样网页和命令行的结果永远一致 —— 换个方式跑，不会出现两套答案。
 """
 from __future__ import annotations
 

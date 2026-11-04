@@ -5,6 +5,10 @@ __pycache__/
 *.pyc
 .venv/
 
+# IDE
+.idea/
+.vscode/
+
 # Streamlit 本地密钥
 .streamlit/secrets.toml
 
